@@ -55,6 +55,7 @@ private:
     int done_frames_left_ = 0;
     bool had_active_session_ = false;
     bool cli_control_started_ = false;
+    bool cli_control_override_ = false;
 
     static constexpr uint32_t kCliBackgroundColor = 0x000000;
     static constexpr uint32_t kCliForegroundColor = 0x00A8FF;
@@ -97,23 +98,32 @@ private:
 
     bool ApplyCliControlCommand(const std::string& command) {
         if (command == "boot" || command == "booting") {
+            cli_control_override_ = true;
             SetCliMode(CliMode::kBooting, true);
         } else if (command == "ready" || command == "idle") {
+            cli_control_override_ = false;
             SetCliMode(CliMode::kReady, true);
         } else if (command == "think" || command == "thinking" || command == "codex-thinking") {
+            cli_control_override_ = true;
             SetCliMode(CliMode::kThinking, true);
         } else if (command == "listen" || command == "listening") {
+            cli_control_override_ = true;
             SetCliMode(CliMode::kListening, true);
         } else if (command == "work" || command == "working" || command == "codex-working") {
+            cli_control_override_ = true;
             SetCliMode(CliMode::kWorking, true);
         } else if (command == "test" || command == "testing") {
+            cli_control_override_ = true;
             SetCliMode(CliMode::kTesting, true);
         } else if (command == "done" || command == "complete" || command == "completed") {
+            cli_control_override_ = true;
             done_frames_left_ = 8;
             SetCliMode(CliMode::kDone, true);
         } else if (command == "error" || command == "failed" || command == "fail") {
+            cli_control_override_ = true;
             SetCliMode(CliMode::kError, true);
         } else if (command == "sleep" || command == "sleeping") {
+            cli_control_override_ = true;
             SetCliMode(CliMode::kSleeping, true);
         } else {
             return false;
@@ -273,6 +283,7 @@ private:
                 break;
             case CliMode::kDone:
                 if (done_frames_left_ > 0 && --done_frames_left_ == 0) {
+                    cli_control_override_ = false;
                     SetCliMode(CliMode::kReady, true);
                     return;
                 }
@@ -301,6 +312,10 @@ private:
 
     void ApplyStateStatus() {
         StartCliControlServer();
+
+        if (cli_control_override_) {
+            return;
+        }
 
         auto state = Application::GetInstance().GetDeviceState();
 
@@ -470,6 +485,7 @@ public:
 
     virtual void SetStatus(const char* status) override {
         if (Contains(status, "error") || Contains(status, "failed") || Contains(status, "fail")) {
+            cli_control_override_ = false;
             SetCliMode(CliMode::kError, true);
             return;
         }
@@ -477,6 +493,10 @@ public:
     }
 
     virtual void SetEmotion(const char* emotion) override {
+        if (cli_control_override_) {
+            return;
+        }
+
         if (Contains(emotion, "xmark") || Contains(emotion, "exclamation") || Contains(emotion, "error")) {
             SetCliMode(CliMode::kError, true);
         } else if (Contains(emotion, "sleepy")) {
