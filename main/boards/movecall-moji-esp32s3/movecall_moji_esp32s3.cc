@@ -17,6 +17,11 @@
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
 
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <lwip/inet.h>
+#include <lwip/sockets.h>
+
 #include <algorithm>
 #include <cctype>
 #include <cstring>
@@ -52,9 +57,14 @@ private:
 
     static constexpr uint32_t kCliBackgroundColor = 0x000000;
     static constexpr uint32_t kCliForegroundColor = 0x00A8FF;
+    static constexpr int kCliControlPort = 3333;
 
     static void OnCliTimer(void* arg) {
         static_cast<CustomLcdDisplay*>(arg)->AnimateCliFace();
+    }
+
+    static void OnCliControlTask(void* arg) {
+        static_cast<CustomLcdDisplay*>(arg)->RunCliControlServer();
     }
 
     static bool Contains(const char* text, const char* needle) {
@@ -69,6 +79,86 @@ private:
         std::transform(target.begin(), target.end(), target.begin(),
             [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         return haystack.find(target) != std::string::npos;
+    }
+
+    static std::string NormalizeCommand(const char* data, int len) {
+        std::string command(data, len);
+        while (!command.empty() && std::isspace(static_cast<unsigned char>(command.front()))) {
+            command.erase(command.begin());
+        }
+        while (!command.empty() && std::isspace(static_cast<unsigned char>(command.back()))) {
+            command.pop_back();
+        }
+        std::transform(command.begin(), command.end(), command.begin(),
+            [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        return command;
+    }
+
+    bool ApplyCliControlCommand(const std::string& command) {
+        if (command == "boot" || command == "booting") {
+            SetCliMode(CliMode::kBooting, true);
+        } else if (command == "ready" || command == "idle") {
+            SetCliMode(CliMode::kReady, true);
+        } else if (command == "think" || command == "thinking" || command == "codex-thinking") {
+            SetCliMode(CliMode::kThinking, true);
+        } else if (command == "listen" || command == "listening") {
+            SetCliMode(CliMode::kListening, true);
+        } else if (command == "work" || command == "working" || command == "codex-working") {
+            SetCliMode(CliMode::kWorking, true);
+        } else if (command == "test" || command == "testing") {
+            SetCliMode(CliMode::kTesting, true);
+        } else if (command == "done" || command == "complete" || command == "completed") {
+            done_frames_left_ = 8;
+            SetCliMode(CliMode::kDone, true);
+        } else if (command == "error" || command == "failed" || command == "fail") {
+            SetCliMode(CliMode::kError, true);
+        } else if (command == "sleep" || command == "sleeping") {
+            SetCliMode(CliMode::kSleeping, true);
+        } else {
+            return false;
+        }
+        return true;
+    }
+
+    void RunCliControlServer() {
+        int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+        if (sock < 0) {
+            ESP_LOGE(TAG, "Failed to create CLI control UDP socket");
+            vTaskDelete(nullptr);
+            return;
+        }
+
+        int reuse = 1;
+        setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+
+        sockaddr_in listen_addr = {};
+        listen_addr.sin_family = AF_INET;
+        listen_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+        listen_addr.sin_port = htons(kCliControlPort);
+
+        if (bind(sock, reinterpret_cast<sockaddr*>(&listen_addr), sizeof(listen_addr)) < 0) {
+            ESP_LOGE(TAG, "Failed to bind CLI control UDP port %d", kCliControlPort);
+            close(sock);
+            vTaskDelete(nullptr);
+            return;
+        }
+
+        ESP_LOGI(TAG, "CLI control UDP server listening on port %d", kCliControlPort);
+
+        while (true) {
+            char buffer[64] = {};
+            sockaddr_in source_addr = {};
+            socklen_t socklen = sizeof(source_addr);
+            int len = recvfrom(sock, buffer, sizeof(buffer) - 1, 0,
+                reinterpret_cast<sockaddr*>(&source_addr), &socklen);
+            if (len <= 0) {
+                continue;
+            }
+
+            auto command = NormalizeCommand(buffer, len);
+            bool accepted = ApplyCliControlCommand(command);
+            ESP_LOGI(TAG, "CLI control command '%s': %s", command.c_str(), accepted ? "accepted" : "ignored");
+        }
     }
 
     void RenderLocked(const char* face, const char* status, lv_color_t border_color = lv_color_hex(kCliForegroundColor)) {
@@ -262,6 +352,7 @@ public:
             .skip_unhandled_events = true,
         };
         ESP_ERROR_CHECK(esp_timer_create(&timer_args, &cli_timer_));
+        xTaskCreate(&CustomLcdDisplay::OnCliControlTask, "moji_cli_udp", 4096, this, 4, nullptr);
     }
 
     virtual ~CustomLcdDisplay() {

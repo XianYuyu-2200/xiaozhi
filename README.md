@@ -15,6 +15,7 @@
 - 蓝色文字和蓝色边框
 - CLI 风格状态显示
 - 每个运行状态都有动态 ASCII 表情
+- 支持电脑端通过 UDP 遥控屏幕状态
 - 隐藏原项目的顶部栏、聊天内容区和默认 emoji 图像
 - 保留 Wi-Fi、语音、音频测试和小智基础功能
 
@@ -36,6 +37,45 @@
 
 当前共有 12 个不同表情，按状态动画帧计算共有 20 帧。
 
+## Codex 联动
+
+固件会在 Wi-Fi 下监听 UDP `3333` 端口。电脑端发送状态指令后，屏幕会立即切换到对应表情。
+
+支持的指令：
+
+```text
+booting
+ready
+thinking
+listening
+working
+testing
+done
+error
+sleeping
+```
+
+电脑端脚本：
+
+```text
+tools/codex_moji.ps1
+```
+
+广播发送到同一局域网：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\codex_moji.ps1 thinking
+powershell -ExecutionPolicy Bypass -File tools\codex_moji.ps1 done
+```
+
+如果知道小智的 IP，也可以指定 IP：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\codex_moji.ps1 thinking 192.168.1.23
+```
+
+这样就可以在 Codex 开始处理问题时发送 `thinking`，回答结束后发送 `done` 或 `ready`。
+
 ## 代码位置
 
 主要定制文件：
@@ -49,6 +89,7 @@ main/boards/movecall-moji-esp32s3/movecall_moji_esp32s3.cc
 - `CustomLcdDisplay`：定制圆屏 UI
 - `SetCliMode()`：切换状态
 - `AnimateCliFace()`：定时切换动态表情
+- `RunCliControlServer()`：监听 UDP 状态控制指令
 - `ApplyStateStatus()`：把小智设备状态映射到屏幕状态
 
 ## 编译环境
@@ -91,6 +132,7 @@ python -m esptool --chip esp32s3 -p COM5 -b 460800 --before default_reset --afte
 2. 连接设备热点并完成 Wi-Fi 配网。
 3. 设备联网后屏幕显示 `Codex Ready`。
 4. 唤醒或开始对话后，屏幕会按状态切换动态表情。
+5. 电脑端可通过 `tools/codex_moji.ps1` 让 Codex 遥控小智表情。
 
 ## 说明
 
