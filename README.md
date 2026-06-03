@@ -76,6 +76,34 @@ powershell -ExecutionPolicy Bypass -File tools\codex_moji.ps1 thinking 192.168.1
 
 这样就可以在 Codex 开始处理问题时发送 `thinking`，回答结束后发送 `done` 或 `ready`。
 
+### 完全自动化
+
+如果希望不手动执行 `codex_moji.ps1`，可以启动监听器：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\start_codex_moji_watcher.ps1
+```
+
+默认监听当前 Codex 线程，并把状态发送到 `192.168.0.26:3333`。如果小智 IP 变了，启动时指定新 IP：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\start_codex_moji_watcher.ps1 -HostName 192.168.0.26
+```
+
+监听器会读取本机 Codex 日志数据库：
+
+```text
+C:\Users\<用户名>\.codex\logs_2.sqlite
+```
+
+检测到当前线程的新用户消息时发送 `thinking`，检测到当前回复完成时发送 `done`。这是基于 Codex 本地日志的外部联动方案，如果 Codex 后续版本修改日志结构，监听器可能需要同步调整。
+
+停止监听器：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\stop_codex_moji_watcher.ps1
+```
+
 ## 代码位置
 
 主要定制文件：
