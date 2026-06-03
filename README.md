@@ -30,7 +30,7 @@
 | Thinking | 配网、激活、连接、思考 | `(o.o)` / `(o_O)` / `(O_o)` |
 | Codex Listening | 聆听/收音 | `(o_o)` / `(O_O)` |
 | Codex Working | 回复、播报、处理中、升级 | `(o_O)` / `(O_o)` / `(o_o)` |
-| Codex Working | Codex 正在写代码 | `(｡◕‿◕｡)` |
+| Codex Working | Codex 正在写代码 | `(^o^)` / `(^.^)` / `(^_^)` |
 | Testing | 音频测试 | `(O_O)` / `(o_o)` |
 | Task Complete | 一轮任务结束 | `(^_^)` / `(^o^)` |
 | Error | 错误/失败 | `(T_T)` / `(x_x)` |

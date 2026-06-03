@@ -236,7 +236,7 @@ private:
                 RenderLocked("(o_O)", "Codex Working");
                 break;
             case CliMode::kCodexWorking:
-                RenderLocked("(｡◕‿◕｡)", "Codex Working");
+                RenderLocked("(^o^)", "Codex Working");
                 break;
             case CliMode::kTesting:
                 RenderLocked("(O_O)", "Testing");
@@ -280,9 +280,11 @@ private:
                 face = faces[animation_frame_ % 3];
                 break;
             }
-            case CliMode::kCodexWorking:
-                face = "(｡◕‿◕｡)";
+            case CliMode::kCodexWorking: {
+                static const char* faces[] = {"(^o^)", "(^.^)", "(^_^)"};
+                face = faces[animation_frame_ % 3];
                 break;
+            }
             case CliMode::kTesting: {
                 static const char* faces[] = {"(O_O)", "(o_o)"};
                 face = faces[animation_frame_ % 2];
@@ -490,7 +492,7 @@ public:
         lv_obj_add_flag(cli_message_label_, LV_OBJ_FLAG_HIDDEN);
 
         RenderLocked("(^_^)", "Booting");
-        ESP_ERROR_CHECK(esp_timer_start_periodic(cli_timer_, 450 * 1000));
+        ESP_ERROR_CHECK(esp_timer_start_periodic(cli_timer_, 500 * 1000));
     }
 
     virtual void SetStatus(const char* status) override {
