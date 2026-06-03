@@ -54,6 +54,7 @@ private:
     int animation_frame_ = 0;
     int done_frames_left_ = 0;
     bool had_active_session_ = false;
+    bool cli_control_started_ = false;
 
     static constexpr uint32_t kCliBackgroundColor = 0x000000;
     static constexpr uint32_t kCliForegroundColor = 0x00A8FF;
@@ -120,7 +121,20 @@ private:
         return true;
     }
 
+    void StartCliControlServer() {
+        if (cli_control_started_) {
+            return;
+        }
+        if (xTaskCreate(&CustomLcdDisplay::OnCliControlTask, "moji_cli_udp", 4096, this, 4, nullptr) == pdPASS) {
+            cli_control_started_ = true;
+        } else {
+            ESP_LOGE(TAG, "Failed to start CLI control UDP task");
+        }
+    }
+
     void RunCliControlServer() {
+        vTaskDelay(pdMS_TO_TICKS(3000));
+
         int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
         if (sock < 0) {
             ESP_LOGE(TAG, "Failed to create CLI control UDP socket");
@@ -286,6 +300,8 @@ private:
     }
 
     void ApplyStateStatus() {
+        StartCliControlServer();
+
         auto state = Application::GetInstance().GetDeviceState();
 
         switch (state) {
@@ -352,7 +368,6 @@ public:
             .skip_unhandled_events = true,
         };
         ESP_ERROR_CHECK(esp_timer_create(&timer_args, &cli_timer_));
-        xTaskCreate(&CustomLcdDisplay::OnCliControlTask, "moji_cli_udp", 4096, this, 4, nullptr);
     }
 
     virtual ~CustomLcdDisplay() {
