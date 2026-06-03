@@ -33,6 +33,10 @@ def is_response_complete(body: str) -> bool:
     return "response.completed" in body or "turn.completed" in body or "turn_complete" in body
 
 
+def is_code_write(body: str) -> bool:
+    return 'tool_name="apply_patch"' in body or "ToolCall: apply_patch" in body
+
+
 def open_readonly(db_path: Path) -> sqlite3.Connection:
     return sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=1.0)
 
@@ -48,6 +52,7 @@ def watch(args: argparse.Namespace) -> None:
     last_id = get_max_log_id(db_path) if args.from_now else 0
     active_turn: str | None = None
     started_turns: set[str] = set()
+    coding_turns: set[str] = set()
     done_turns: set[str] = set()
 
     print(f"Watching thread {args.thread_id}")
@@ -84,6 +89,12 @@ def watch(args: argparse.Namespace) -> None:
                 done_turns.discard(turn_id)
                 send_state(args.host, args.port, "thinking")
                 print(f"{time.strftime('%H:%M:%S')} turn {turn_id}: thinking")
+                continue
+
+            if active_turn and turn_id == active_turn and turn_id not in coding_turns and is_code_write(body):
+                coding_turns.add(turn_id)
+                send_state(args.host, args.port, "coding")
+                print(f"{time.strftime('%H:%M:%S')} turn {turn_id}: coding")
                 continue
 
             if active_turn and turn_id == active_turn and turn_id not in done_turns and is_response_complete(body):

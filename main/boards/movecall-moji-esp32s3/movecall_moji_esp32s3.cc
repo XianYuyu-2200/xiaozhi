@@ -39,6 +39,7 @@ private:
         kThinking,
         kListening,
         kWorking,
+        kCodexWorking,
         kTesting,
         kDone,
         kError,
@@ -109,9 +110,12 @@ private:
         } else if (command == "listen" || command == "listening") {
             cli_control_override_ = true;
             SetCliMode(CliMode::kListening, true);
-        } else if (command == "work" || command == "working" || command == "codex-working") {
+        } else if (command == "work" || command == "working") {
             cli_control_override_ = true;
             SetCliMode(CliMode::kWorking, true);
+        } else if (command == "code" || command == "coding" || command == "codex-coding" || command == "codex-working" || command == "writing-code") {
+            cli_control_override_ = true;
+            SetCliMode(CliMode::kCodexWorking, true);
         } else if (command == "test" || command == "testing") {
             cli_control_override_ = true;
             SetCliMode(CliMode::kTesting, true);
@@ -231,6 +235,9 @@ private:
             case CliMode::kWorking:
                 RenderLocked("(o_O)", "Codex Working");
                 break;
+            case CliMode::kCodexWorking:
+                RenderLocked("(｡◕‿◕｡)", "Codex Working");
+                break;
             case CliMode::kTesting:
                 RenderLocked("(O_O)", "Testing");
                 break;
@@ -273,6 +280,9 @@ private:
                 face = faces[animation_frame_ % 3];
                 break;
             }
+            case CliMode::kCodexWorking:
+                face = "(｡◕‿◕｡)";
+                break;
             case CliMode::kTesting: {
                 static const char* faces[] = {"(O_O)", "(o_o)"};
                 face = faces[animation_frame_ % 2];

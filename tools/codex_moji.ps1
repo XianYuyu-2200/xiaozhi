@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $true, Position = 0)]
-    [ValidateSet("booting", "ready", "thinking", "listening", "working", "testing", "done", "error", "sleeping")]
+    [ValidateSet("booting", "ready", "thinking", "listening", "working", "coding", "testing", "done", "error", "sleeping")]
     [string] $State,
 
     [Parameter(Position = 1)]
