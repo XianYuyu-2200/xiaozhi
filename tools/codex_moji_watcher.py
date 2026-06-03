@@ -47,6 +47,7 @@ def watch(args: argparse.Namespace) -> None:
     db_path = Path(args.db)
     last_id = get_max_log_id(db_path) if args.from_now else 0
     active_turn: str | None = None
+    started_turns: set[str] = set()
     done_turns: set[str] = set()
 
     print(f"Watching thread {args.thread_id}")
@@ -77,8 +78,9 @@ def watch(args: argparse.Namespace) -> None:
                 continue
 
             turn_id = extract_turn_id(body)
-            if is_user_submission(body) and turn_id and turn_id != active_turn:
+            if is_user_submission(body) and turn_id and turn_id not in started_turns:
                 active_turn = turn_id
+                started_turns.add(turn_id)
                 done_turns.discard(turn_id)
                 send_state(args.host, args.port, "thinking")
                 print(f"{time.strftime('%H:%M:%S')} turn {turn_id}: thinking")
